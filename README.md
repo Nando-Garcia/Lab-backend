@@ -96,3 +96,32 @@ Nest is an MIT-licensed open source project. It can grow thanks to the sponsors 
 ## License
 
 Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+
+
+## AWS SECRETS MANAGER
+
+Instalcion de SDK:
+npm install @aws-sdk/client-secrets-manager
+
+Al no tener instalado AWS CLI se puede crear con Postman:
+Method:   POST
+URL:      http://localhost:4566
+Headers:
+          Content-Type: application/x-amz-json-1.1
+          X-Amz-Target: secretsmanager.CreateSecret
+Body (raw JSON)
+{
+  "Name": "notesdb/credentials",
+  "SecretString": "{\"username\":\"user\",\"password\":\"pass\",\"host\":\"localhost\",\"port\":5432,\"database\":\"dbname\"}"
+}
+
+Verificar secret creado:
+  Method:   POST
+  URL:      http://localhost:4566
+  Headers:
+            Content-Type: application/x-amz-json-1.1
+            X-Amz-Target: secretsmanager.GetSecretValue
+  Body (raw JSON):
+  {
+    "SecretId": "notesdb/credentials"
+  }

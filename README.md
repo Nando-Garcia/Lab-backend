@@ -96,3 +96,63 @@ Nest is an MIT-licensed open source project. It can grow thanks to the sponsors 
 ## License
 
 Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+
+
+## AWS SECRETS MANAGER
+
+1. Instalcion de SDK:
+npm install @aws-sdk/client-secrets-manager
+
+Al no tener instalado AWS CLI se puede crear con Postman:
+- Method:   POST
+- URL:      http://localhost:4566
+- Headers:
+          Content-Type: application/x-amz-json-1.1
+          X-Amz-Target: secretsmanager.CreateSecret
+- Body (raw JSON)
+{
+  "Name": "notesdb/credentials",
+  "SecretString": "{\"username\":\"user\",\"password\":\"pass\",\"host\":\"localhost\",\"port\":5432,\"database\":\"dbname\"}"
+}
+
+2. Verificar secret creado:
+
+- Method:   POST
+- URL:      http://localhost:4566
+- Headers:
+Content-Type: application/x-amz-json-1.1
+X-Amz-Target: secretsmanager.GetSecretValue
+- Body (raw JSON):
+{
+  "SecretId": "notesdb/credentials"
+}
+
+3. Instalacion de AWSCLI para verificar recursos creados (NOTA: version usada ARM64, uname -m para ver la arquitectura del procesador):
+Desde WSL:
+- sudo apt update
+- curl "https://awscli.amazonaws.com/awscli-exe-linux-aarch64.zip" -o "awscliv2.zip"
+- unzip awscliv2.zip
+- sudo ./aws/install
+
+Verificar:
+- aws --version
+
+3.1. Configuracion:
+- aws configure
+- AWS Access Key ID: test
+- AWS Secret Access Key: test
+- Default region name: us-east-1
+- Default output format: json
+
+Tip: Para evitar q se conecte a AWS real (estando localstack detenido) crear perfil y agregar las mismas credenciales de arriba:
+- aws configure --profile localstack
+
+
+Ej.
+Listar servicio S3 creados en localstack
+- aws --endpoint-url=http://localhost:4566 s3 ls
+- aws --profile localstack --endpoint-url=http://localhost:4566 s3 ls        (con perfil creado -localstack-, apaso de arriba-Tip)
+
+
+
+

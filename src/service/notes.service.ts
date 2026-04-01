@@ -10,16 +10,16 @@ export class NotesService {
     private readonly notesRepository: Repository<Note>,
   ) {}
 
-  async findAll(): Promise<Note[] | { mensaje: string }> {
-    const notes = await this.notesRepository.find();
+  async findAllByUser(userId: number): Promise<Note[] | { mensaje: string }> {
+    const notes = await this.notesRepository.find({ where: { userId } });
     if (notes.length === 0) {
       return { mensaje: 'no hay mensajes' };
     }
     return notes;
   }
 
-  async create(note: { title: string; content: string }): Promise<Note> {
-    const newNote = this.notesRepository.create(note);
+  async create(note: { title: string; content: string }, userId: number): Promise<Note> {
+    const newNote = this.notesRepository.create({ ...note, userId });
     return this.notesRepository.save(newNote);
   }
 }

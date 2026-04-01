@@ -154,5 +154,40 @@ Listar servicio S3 creados en localstack
 - aws --profile localstack --endpoint-url=http://localhost:4566 s3 ls        (con perfil creado -localstack-, apaso de arriba-Tip)
 
 
+## JWT
 
+Archivos nuevos en backend/src/auth/:
 
+auth.module.ts — Módulo con JWT y Passport
+auth.controller.ts — Endpoints POST /auth/register y POST /auth/login
+auth.service.ts — Lógica de registro (bcrypt hash) y login (genera JWT)
+jwt.strategy.ts — Estrategia Passport para validar bearer tokens
+jwt-auth.guard.ts — Guard reutilizable
+user.entity.ts — Entidad users (id, username, password)
+
+Archivos modificados:
+
+main.ts — CORS habilitado para http://localhost:4200
+app.module.ts — AuthModule importado
+notes.controller.ts — Endpoints protegidos con @UseGuards(JwtAuthGuard)
+
+Endpoints del backend:
+
+Método	Ruta	Auth	Descripción
+POST	/auth/register	No	Registro con { username, password }
+POST	/auth/login	No	Login, retorna { access_token }
+GET	/notes	JWT	Listar notas
+POST	/notes	JWT	Crear nota { title, content }
+
+## Notes by user
+
+Archivos modificados:
+---
+
+Archivo	            Cambio
+note.entity.ts	    Agregado @ManyToOne → User + columna userId
+user.entity.ts	    Agregado @OneToMany → Note[]
+notes.controller.ts	Extrae req.user.userId del JWT y lo pasa al servicio
+notes.service.ts	findAllByUser(userId) filtra por usuario, create() asigna el userId
+
+NOTA: al iniciar el backen crea automaticamente 

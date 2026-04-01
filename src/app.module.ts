@@ -3,6 +3,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { NotesModule } from './notes/notes.module';
+import { AuthModule } from './auth/auth.module';
 import {
   SecretsManagerClient,
   GetSecretValueCommand,
@@ -40,6 +41,7 @@ import {
       },
     }),
     NotesModule,
+    AuthModule,
   ],
   controllers: [AppController],
   providers: [AppService],

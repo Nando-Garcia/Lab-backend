@@ -4,6 +4,7 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { NotesModule } from './notes/notes.module';
 import { AuthModule } from './auth/auth.module';
+import { SqsModule } from './sqs/sqs.module';
 import {
   SecretsManagerClient,
   GetSecretValueCommand,
@@ -42,6 +43,7 @@ import {
     }),
     NotesModule,
     AuthModule,
+    SqsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

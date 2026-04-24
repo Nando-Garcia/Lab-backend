@@ -191,3 +191,77 @@ notes.controller.ts	Extrae req.user.userId del JWT y lo pasa al servicio
 notes.service.ts	findAllByUser(userId) filtra por usuario, create() asigna el userId
 
 NOTA: al iniciar el backen crea automaticamente 
+
+## AWS - SQS/DLQ
+
+crear cola DLQ y cola SQS primero, se puede ejecutar desde powershell, porq ocupa docker exec:
+
+> crear cola DLQ y SQS
+  ```bash
+  docker exec localstack-lab awslocal sqs create-queue --queue-name notes-dlq --region us-east-1
+
+  docker exec localstack-lab awslocal sqs create-queue --queue-name notes-queue --region us-east-1
+  ```
+
+> Asignar atributos a cola SQS con redrive policy apuntando a la DLQ: 
+NOTA: crearlo desde bash 
+```bash
+  docker exec localstack-lab awslocal sqs set-queue-attributes \
+    --queue-url http://sqs.us-east-1.localhost.localstack.cloud:4566/000000000000/notes-queue \
+    --region us-east-1 \
+    --attributes '{"RedrivePolicy":"{\"deadLetterTargetArn\":\"arn:aws:sqs:us-east-1:000000000000:notes-dlq\",\"maxReceiveCount\":\"3\"}"}'
+  ```
+
+
+Verificar: 
+  ```bash
+  docker exec localstack-lab awslocal sqs list-queues --region us-east-1
+
+  docker exec localstack-lab awslocal sqs get-queue-attributes --queue-url http://sqs.us-east-1.localhost.localstack.cloud:4566/000000000000/notes-queue --attribute-names All --region us-east-1
+  ```
+
+
+Código:
+dependencies:     "@aws-sdk/client-sqs": "^3.1031.0"
+
+El consumer se inclouye en esta rama simulando un procesamiento de la cola SQS una vez creado el mensaje 'sqs-consumer.service.ts' este fichero se eliminara una vez implementada la lamnda por ahora realiza un pooling cada 5 segundos para preguntar sobre la cola SQS
+
+Verificar que el proceso del backend elimino el mensaje de la cola SQS:
+  ```bash
+  docker exec localstack-lab awslocal sqs get-queue-attributes \
+    --queue-url http://sqs.us-east-1.localhost.localstack.cloud:4566/000000000000/notes-queue \
+    --attribute-names ApproximateNumberOfMessages --region us-east-1
+  ``` 
+  > Esperas ver: "ApproximateNumberOfMessages": "0"
+
+
+Probar DLQ:
+1. Back detenido, Ctl + C
+2. Mandar mensaje manualmente a la cola SQS, usar bash:
+
+Crear mensaje en cola SQS:
+  ```bash
+  docker exec localstack-lab awslocal sqs send-message \
+    --queue-url http://sqs.us-east-1.localhost.localstack.cloud:4566/000000000000/notes-queue \
+    --message-body '{"event":"NOTE_CREATED","noteId":999,"userId":1,"timestamp":"2026-04-20T00:00:00Z"}' \
+    --region us-east-1
+  ```
+
+3. Verificar con el paso de arriba
+4. Cambiar tempralmente el VisibilityTimeout a 0 (30, valor por defecto por aws) ya que es el timepo para el mensaje sea procesado por lambda, consumer, etc, si no lo hace el mensaje se vuelve "visible" y comienza el conteo a 3 para mandarlo a DLQ
+
+Cambiar VisibilityTimeout a 0, regresarlo a 30 tras la prueba:
+  ```bash
+  docker exec localstack-lab awslocal sqs set-queue-attributes \
+    --queue-url http://sqs.us-east-1.localhost.localstack.cloud:4566/000000000000/notes-queue \
+    --attributes VisibilityTimeout=0 --region us-east-1
+  ```
+5. Iniciar el back: se imprimiran los logs del error 3 veces
+
+Verificar la cola DLQ:
+  ```bash
+  docker exec localstack-lab awslocal sqs get-queue-attributes \
+    --queue-url http://sqs.us-east-1.localhost.localstack.cloud:4566/000000000000/notes-dlq \
+    --attribute-names ApproximateNumberOfMessages --region us-east-1
+  ```
+6. Comentar el throw y regresar VisibilityTimeout a 30

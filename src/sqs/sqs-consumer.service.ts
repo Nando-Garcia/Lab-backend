@@ -1,29 +1,31 @@
-import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
+import { Injectable, Inject, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 import {
   SQSClient,
   ReceiveMessageCommand,
   DeleteMessageCommand,
 } from '@aws-sdk/client-sqs';
 
+interface SqsConfig {
+  queueUrl: string;
+  dlqUrl: string;
+  region: string;
+}
+
 @Injectable()
 export class SqsConsumerService implements OnModuleInit, OnModuleDestroy {
   private readonly client: SQSClient;
-  private readonly queueUrl: string;
   private readonly logger = new Logger(SqsConsumerService.name);
   private isRunning = false;
 
-  constructor() {
+  constructor(@Inject('SQS_CONFIG') private readonly sqsConfig: SqsConfig) {
     this.client = new SQSClient({
-      region: 'us-east-1',
+      region: sqsConfig.region,
       endpoint: 'http://localhost:4566',
       credentials: {
         accessKeyId: 'test',
         secretAccessKey: 'test',
       },
     });
-
-    this.queueUrl =
-      'http://sqs.us-east-1.localhost.localstack.cloud:4566/000000000000/notes-queue';
   }
 
   onModuleInit() {
@@ -42,7 +44,7 @@ export class SqsConsumerService implements OnModuleInit, OnModuleDestroy {
       console.log("Escuchando... Preguntando si hay mensaje cada 5s.")
       try {
         const command = new ReceiveMessageCommand({
-          QueueUrl: this.queueUrl,
+          QueueUrl: this.sqsConfig.queueUrl,
           MaxNumberOfMessages: 10,
           WaitTimeSeconds: 5, // long polling: espera hasta 5s si no hay mensajes (reduce llamadas vacías)
         });
@@ -63,7 +65,7 @@ export class SqsConsumerService implements OnModuleInit, OnModuleDestroy {
   }
 
   private async processMessage(message: any): Promise<void> {
-    throw new Error('Fallo simulado solo para prueba de DLQ'); // temporal, solo para probar DLQ VisibilityTimeout  debe estar en 0 no en 30
+    // throw new Error('Fallo simulado solo para prueba de DLQ'); // temporal, solo para probar DLQ VisibilityTimeout  debe estar en 0 no en 30
     try {
       const body = JSON.parse(message.Body);
 
@@ -77,7 +79,7 @@ export class SqsConsumerService implements OnModuleInit, OnModuleDestroy {
       // Eliminar el mensaje de la cola (sin esto SQS lo reintenta y tras 3 fallos va a DLQ)
       await this.client.send(
         new DeleteMessageCommand({
-          QueueUrl: this.queueUrl,
+          QueueUrl: this.sqsConfig.queueUrl,
           ReceiptHandle: message.ReceiptHandle,
         }),
       );

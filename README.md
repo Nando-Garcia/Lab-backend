@@ -220,6 +220,7 @@ Verificar:
   docker exec localstack-lab awslocal sqs get-queue-attributes --queue-url http://sqs.us-east-1.localhost.localstack.cloud:4566/000000000000/notes-queue --attribute-names All --region us-east-1
   ```
 
+NOTA: Se deben crear primero ambas colas (SQS, DLQ en bash para evitar problemas de escaping en powershell) y despues crear los secrets (BD y SQS) para levantar el back
 
 Código:
 dependencies:     "@aws-sdk/client-sqs": "^3.1031.0"

@@ -1,27 +1,29 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Inject, Logger } from '@nestjs/common';
 import {
   SQSClient,
   SendMessageCommand,
 } from '@aws-sdk/client-sqs';
 
+interface SqsConfig {
+  queueUrl: string;
+  dlqUrl: string;
+  region: string;
+}
+
 @Injectable()
 export class SqsProducerService {
   private readonly client: SQSClient;
-  private readonly queueUrl: string;
   private readonly logger = new Logger(SqsProducerService.name);
 
-  constructor() {
+  constructor(@Inject('SQS_CONFIG') private readonly sqsConfig: SqsConfig) {
     this.client = new SQSClient({
-      region: 'us-east-1',
+      region: sqsConfig.region,
       endpoint: 'http://localhost:4566',
       credentials: {
         accessKeyId: 'test',
         secretAccessKey: 'test',
       },
     });
-
-    this.queueUrl =
-      'http://sqs.us-east-1.localhost.localstack.cloud:4566/000000000000/notes-queue';
   }
 
   async sendNoteCreatedEvent(noteId: number, userId: number): Promise<void> {
@@ -33,7 +35,7 @@ export class SqsProducerService {
     };
 
     const command = new SendMessageCommand({
-      QueueUrl: this.queueUrl,
+      QueueUrl: this.sqsConfig.queueUrl,
       MessageBody: JSON.stringify(message),
     });
 

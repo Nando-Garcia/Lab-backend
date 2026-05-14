@@ -27,21 +27,50 @@ export class SqsProducerService {
   }
 
   async sendNoteCreatedEvent(noteId: number, userId: number): Promise<void> {
-    const message = {
-      event: 'NOTE_CREATED',
-      noteId,
-      userId,
-      timestamp: new Date().toISOString(),
-    };
+    try {
+      const message = {
+        event: 'NOTE_CREATED',
+        noteId,
+        userId,
+        timestamp: new Date().toISOString(),
+      };
 
-    const command = new SendMessageCommand({
-      QueueUrl: this.sqsConfig.queueUrl,
-      MessageBody: JSON.stringify(message),
-    });
+      this.logger.log(`[SQS_MESSAGE_SEND_START] noteId=${noteId}, userId=${userId}`, {
+        context: 'SqsProducerService.sendNoteCreatedEvent',
+        noteId,
+        userId,
+        event: message.event,
+      });
 
-    const result = await this.client.send(command);
-    this.logger.log(
-      `[SQS Producer] Mensaje enviado. MessageId: ${result.MessageId} | noteId: ${noteId} | userId: ${userId}`,
-    );
+      const command = new SendMessageCommand({
+        QueueUrl: this.sqsConfig.queueUrl,
+        MessageBody: JSON.stringify(message),
+      });
+
+      const result = await this.client.send(command);
+
+      this.logger.log(
+        `[SQS_MESSAGE_SENT] Mensaje enviado correctamente`,
+        {
+          context: 'SqsProducerService.sendNoteCreatedEvent',
+          messageId: result.MessageId,
+          noteId,
+          userId,
+          timestamp: message.timestamp,
+        },
+      );
+    } catch (error) {
+      this.logger.error(
+        `[SQS_MESSAGE_SEND_FAILED] Error enviando mensaje a SQS`,
+        {
+          context: 'SqsProducerService.sendNoteCreatedEvent',
+          noteId,
+          userId,
+          error: error.message,
+          stack: error.stack,
+        },
+      );
+      throw error;
+    }
   }
 }

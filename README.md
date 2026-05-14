@@ -266,3 +266,145 @@ Verificar la cola DLQ:
     --attribute-names ApproximateNumberOfMessages --region us-east-1
   ```
 6. Comentar el throw y regresar VisibilityTimeout a 30
+
+
+## AWS - CloudWatch (Observabilidad)
+
+Instalación de SDK:
+npm install winston winston-cloudwatch
+
+### Crear Log Groups en LocalStack:
+
+```bash
+# Crear Log Group para backend
+docker exec localstack-lab awslocal logs create-log-group \
+  --log-group-name /app/backend \
+  --region us-east-1
+
+# Crear Log Stream para backend
+docker exec localstack-lab awslocal logs create-log-stream \
+  --log-group-name /app/backend \
+  --log-stream-name backend-dev \
+  --region us-east-1
+
+# Crear Log Group para SQS processing
+docker exec localstack-lab awslocal logs create-log-group \
+  --log-group-name /app/sqs-processing \
+  --region us-east-1
+
+# Crear Log Stream para SQS processing
+docker exec localstack-lab awslocal logs create-log-stream \
+  --log-group-name /app/sqs-processing \
+  --log-stream-name sqs-dev \
+  --region us-east-1
+```
+
+### Verificar Log Groups creados:
+
+```bash
+docker exec localstack-lab awslocal logs describe-log-groups --region us-east-1
+```
+
+### Estructura de logs implementados:
+
+**NotesService:**
+- `[NOTE_CREATE_START]` - Cuando inicia la creación de una nota
+- `[NOTE_CREATE_SUCCESS]` - Cuando la nota se guardó exitosamente y se envía a SQS
+- `[NOTE_CREATE_FAILED]` - Cuando hay error en la creación
+- `[NOTES_FIND_START]` - Cuando busca notas de un usuario
+- `[NOTES_FIND_SUCCESS]` - Cuando encuentra notas
+- `[NOTES_FIND_EMPTY]` - Cuando no hay notas para ese usuario
+- `[NOTES_FIND_FAILED]` - Cuando hay error en la búsqueda
+
+**SqsProducerService:**
+- `[SQS_MESSAGE_SEND_START]` - Antes de enviar mensaje a la cola
+- `[SQS_MESSAGE_SENT]` - Cuando el mensaje se envió exitosamente
+- `[SQS_MESSAGE_SEND_FAILED]` - Cuando hay error enviando a SQS
+
+**SqsConsumerService:**
+- `[SQS_CONSUMER_STARTED]` - Cuando el consumer inicia
+- `[SQS_CONSUMER_STOPPED]` - Cuando el consumer se detiene
+- `[SQS_MESSAGES_RECEIVED]` - Cuando recibe mensajes de la cola
+- `[SQS_MESSAGE_PROCESSING]` - Cuando procesa un mensaje
+- `[SQS_MESSAGE_DELETED]` - Cuando elimina un mensaje de la cola (procesado)
+- `[SQS_MESSAGE_ERROR]` - Cuando hay error procesando un mensaje
+- `[SQS_POLLING_ERROR]` - Cuando hay error en el polling
+
+### Consultar logs en LocalStack:
+
+```bash
+# Ver logs del backend
+docker exec localstack-lab awslocal logs filter-log-events \
+  --log-group-name /app/backend \
+  --region us-east-1
+
+# Ver logs con búsqueda (ej: solo errores)
+docker exec localstack-lab awslocal logs filter-log-events \
+  --log-group-name /app/backend \
+  --filter-pattern "[ERROR]" \
+  --region us-east-1
+
+# Ver últimos 50 eventos
+docker exec localstack-lab awslocal logs filter-log-events \
+  --log-group-name /app/backend \
+  --start-time $(($(date +%s)*1000 - 3600000)) \
+  --region us-east-1
+```
+
+### Características implementadas:
+
+- ✓ Logs estructurados en JSON
+- ✓ Timestamps automáticos
+- ✓ Metadatos contextuales (userId, noteId, etc)
+- ✓ Error tracking con stack trace
+- ✓ Log levels: info, warn, error
+- ✓ Console en desarrollo, CloudWatch en producción
+- ✓ Integrabilidad con futuros dashboards y alarmas
+
+**Notas:**
+- Los logs se envían a consola en desarrollo
+- En .env puedes cambiar LOG_LEVEL a 'debug' para mayor detalle
+- Los logs con contexto facilitarán debugging en análisis de problemas
+- Esta rama prepara el terreno para agregar Alarmas y Dashboards en Terraform
+
+
+## AWS - CLOUDWATCH
+Pueden colocarse solo console.log() pero para trabajar los logs de forma mas profesional se usan logger.log() mediante librerias como Winston/Pino para logs estructurados y winston-cloudwatch para el transport
+
+> CloudWatch es el "centro de observabilidad" de AWS
+  - Logs (texto)
+  - Metrics (números/gráficos)
+  - Events (disparadores)
+
+Fase 1:
+  - Agregar librerías de logging (Winston/Pino)
+  - Escribir logs en el código (logger.log())
+  - Configurar para que "busque" Log Groups en CloudWatch
+
+  FASE 2: Crear infraestructura con Terraform (DESPUÉS)
+  - Define Log Groups en Terraform
+  - Define Log Streams en Terraform
+  - Define Dashboards en Terraform
+  - Define Alarms en Terraform
+
+```bash
+# 1. Crear Log Group
+docker exec localstack-lab awslocal logs create-log-group \
+  --log-group-name /app/backend \
+  --region us-east-1
+
+# 2. Crear Log Stream
+docker exec localstack-lab awslocal logs create-log-stream \
+  --log-group-name /app/backend \
+  --log-stream-name backend-dev \
+  --region us-east-1
+
+# 3. Verificar que se crearon
+docker exec localstack-lab awslocal logs describe-log-groups \
+  --region us-east-1
+
+# 4. Crear otro Log Group para SQS Consumer
+docker exec localstack-lab awslocal logs create-log-group \
+  --log-group-name /app/sqs-processing \
+  --region us-east-1
+```

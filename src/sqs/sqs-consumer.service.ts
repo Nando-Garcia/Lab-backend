@@ -30,35 +30,50 @@ export class SqsConsumerService implements OnModuleInit, OnModuleDestroy {
 
   onModuleInit() {
     this.isRunning = true;
-    this.logger.log('[SQS Consumer] Worker iniciado, escuchando notes-queue...');
+    this.logger.log('[SQS_CONSUMER_STARTED] Worker iniciado, escuchando notes-queue...', {
+      context: 'SqsConsumerService.onModuleInit',
+      queueUrl: this.sqsConfig.queueUrl,
+    });
     this.poll();
   }
 
   onModuleDestroy() {
     this.isRunning = false;
-    this.logger.log('[SQS Consumer] Worker detenido.');
+    this.logger.log('[SQS_CONSUMER_STOPPED] Worker detenido.', {
+      context: 'SqsConsumerService.onModuleDestroy',
+    });
   }
 
   private async poll(): Promise<void> {
     while (this.isRunning) {
-      console.log("Escuchando... Preguntando si hay mensaje cada 5s.")
       try {
         const command = new ReceiveMessageCommand({
           QueueUrl: this.sqsConfig.queueUrl,
           MaxNumberOfMessages: 10,
-          WaitTimeSeconds: 5, // long polling: espera hasta 5s si no hay mensajes (reduce llamadas vacías)
+          WaitTimeSeconds: 5, // long polling: espera hasta 5s si no hay mensajes
         });
 
         const response = await this.client.send(command);
 
         if (response.Messages && response.Messages.length > 0) {
+          this.logger.log(
+            `[SQS_MESSAGES_RECEIVED] Recibidos ${response.Messages.length} mensajes`,
+            {
+              context: 'SqsConsumerService.poll',
+              messageCount: response.Messages.length,
+            },
+          );
+
           for (const message of response.Messages) {
             await this.processMessage(message);
           }
         }
       } catch (error) {
-        this.logger.error('[SQS Consumer] Error en el polling:', error);
-        // Espera 5s antes de reintentar para no saturar en caso de error
+        this.logger.error('[SQS_POLLING_ERROR] Error en el polling de mensajes', {
+          context: 'SqsConsumerService.poll',
+          error: error.message,
+          stack: error.stack,
+        });
         await this.sleep(5000);
       }
     }
@@ -73,7 +88,15 @@ export class SqsConsumerService implements OnModuleInit, OnModuleDestroy {
       // En rama feature/s3-attachments: aquí se generará el backup en S3
       // En rama feature/sqs-to-lambda: este bloque se extrae a una Lambda.
       this.logger.log(
-        `[SQS Consumer] Evento recibido: ${body.event} | noteId: ${body.noteId} | userId: ${body.userId} | timestamp: ${body.timestamp}`,
+        `[SQS_MESSAGE_PROCESSING] Evento: ${body.event} | noteId: ${body.noteId} | userId: ${body.userId}`,
+        {
+          context: 'SqsConsumerService.processMessage',
+          messageId: message.MessageId,
+          event: body.event,
+          noteId: body.noteId,
+          userId: body.userId,
+          timestamp: body.timestamp,
+        },
       );
 
       // Eliminar el mensaje de la cola (sin esto SQS lo reintenta y tras 3 fallos va a DLQ)
@@ -85,13 +108,22 @@ export class SqsConsumerService implements OnModuleInit, OnModuleDestroy {
       );
 
       this.logger.log(
-        `[SQS Consumer] Mensaje procesado y eliminado. MessageId: ${message.MessageId}`,
+        `[SQS_MESSAGE_DELETED] Mensaje procesado y eliminado`,
+        {
+          context: 'SqsConsumerService.processMessage',
+          messageId: message.MessageId,
+        },
       );
     } catch (error) {
       // No eliminamos el mensaje: SQS lo reintentará hasta maxReceiveCount (3), luego va a DLQ
       this.logger.error(
-        `[SQS Consumer] Error procesando mensaje ${message.MessageId}:`,
-        error,
+        `[SQS_MESSAGE_ERROR] Error procesando mensaje ${message.MessageId}`,
+        {
+          context: 'SqsConsumerService.processMessage',
+          messageId: message.MessageId,
+          error: error.message,
+          stack: error.stack,
+        },
       );
     }
   }

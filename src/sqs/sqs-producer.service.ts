@@ -18,10 +18,12 @@ export class SqsProducerService {
   constructor(@Inject('SQS_CONFIG') private readonly sqsConfig: SqsConfig) {
     this.client = new SQSClient({
       region: sqsConfig.region,
-      endpoint: 'http://localhost:4566',
+      endpoint: (process.env.LOCALSTACK_ENDPOINT) as string,
       credentials: {
-        accessKeyId: 'test',
-        secretAccessKey: 'test',
+        //accessKeyId: 'test',
+        accessKeyId: (process.env.AWS_ACCESS_KEY_ID) as string,
+        //secretAccessKey: 'test',
+        secretAccessKey: (process.env.AWS_SECRET_ACCESS_KEY) as string,
       },
     });
   }

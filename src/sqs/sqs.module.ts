@@ -12,15 +12,15 @@ import { SqsConsumerService } from './sqs-consumer.service';
       provide: 'SQS_CONFIG',
       useFactory: async () => {
         const client = new SecretsManagerClient({
-          region: (process.env.AWS_REGION || 'us-east-1') as string,
-          endpoint: (process.env.LOCALSTACK_ENDPOINT || 'http://localhost:4566') as string,
+          region: (process.env.AWS_REGION) as string,
+          endpoint: (process.env.LOCALSTACK_ENDPOINT) as string,
           credentials: {
-            accessKeyId: (process.env.AWS_ACCESS_KEY_ID || 'test') as string,
-            secretAccessKey: (process.env.AWS_SECRET_ACCESS_KEY || 'test') as string,
+            accessKeyId: (process.env.AWS_ACCESS_KEY_ID) as string,
+            secretAccessKey: (process.env.AWS_SECRET_ACCESS_KEY) as string,
           },
         });
         const response: any = await client.send(
-          new GetSecretValueCommand({ SecretId: 'sqs/config' }),
+          new GetSecretValueCommand({ SecretId: process.env.SQS_CONFIG_SECRET_ID }),
         );
         return JSON.parse(response.SecretString);
       },

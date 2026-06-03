@@ -93,6 +93,79 @@ Nest is an MIT-licensed open source project. It can grow thanks to the sponsors 
 - Website - [https://nestjs.com](https://nestjs.com/)
 - Twitter - [@nestframework](https://twitter.com/nestframework)
 
+## Infrastructure as Code (Terraform)
+
+### Directory: `./infra/`
+
+Contiene toda la configuración de infraestructura usando Terraform.
+
+**Archivos:**
+- `main.tf` - Provider configuration y endpoints de LocalStack
+- `variables.tf` - Variables reutilizables
+- `iam.tf` - IAM roles y policies
+- `outputs.tf` - Outputs útiles después del deploy
+
+### Estructura de Ramas de Infraestructura:
+
+1. **feature/iam-baseline** (ACTUAL)
+   - Crea IAM role base para Lambda
+   - Policy para CloudWatch Logs
+   - No modifica SQS (ya existe)
+
+2. **feature/lambda-consumer** (SIGUIENTE)
+   - Crea Lambda function
+   - Extender IAM con SQS permissions
+   - Event source mapping SQS → Lambda
+
+3. **feature/s3-attachments** (SIGUIENTE)
+   - Crea S3 bucket para attachments
+   - Extender IAM con S3 permissions
+   - Lambda extended para upload a S3
+
+4. **feature/terraform-infrastructure** (FINAL)
+   - Codificar SQS/DLQ en Terraform
+   - Consolidar toda la infraestructura
+   - Deploy a AWS real (cuando se necesite)
+
+### Inicializar Terraform (LocalStack):
+
+```bash
+cd infra/
+
+# Inicializar Terraform
+terraform init
+
+# Ver qué se va a crear (plan)
+terraform plan
+
+# Aplicar la configuración
+terraform apply
+
+# Ver los outputs
+terraform output
+```
+
+### Environment:
+
+Terraform usa los defaults de `variables.tf`:
+- `aws_region` = "us-east-1"
+- `project_name` = "notes"
+- `environment` = "development"
+
+Para cambiarlos, crea `infra/terraform.tfvars`:
+```hcl
+aws_region = "us-east-1"
+project_name = "notes"
+environment = "development"
+```
+
+### Limpiar (Destroy):
+
+```bash
+cd infra/
+terraform destroy
+```
+
 ## License
 
 Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).

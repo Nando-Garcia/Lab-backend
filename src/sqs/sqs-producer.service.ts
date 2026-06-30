@@ -61,7 +61,7 @@ export class SqsProducerService {
           timestamp: message.timestamp,
         },
       );
-    } catch (error) {
+    } catch (error: any) {
       this.logger.error(
         `[SQS_MESSAGE_SEND_FAILED] Error enviando mensaje a SQS`,
         {

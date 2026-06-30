@@ -4,7 +4,7 @@ import {
   GetSecretValueCommand,
 } from '@aws-sdk/client-secrets-manager';
 import { SqsProducerService } from './sqs-producer.service';
-import { SqsConsumerService } from './sqs-consumer.service';
+// SqsConsumerService removed: Lambda will handle SQS consumption
 
 @Module({
   providers: [
@@ -26,7 +26,6 @@ import { SqsConsumerService } from './sqs-consumer.service';
       },
     },
     SqsProducerService,
-    SqsConsumerService,
   ],
   exports: [SqsProducerService],
 })

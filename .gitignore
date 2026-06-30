@@ -61,3 +61,7 @@ infra/.terraform/
 infra/*.tfstate*
 infra/.terraform.lock.hcl
 infra/*.tfplan
+
+# Lambda build artifacts
+/lambda-dist/
+*.tsbuildinfo

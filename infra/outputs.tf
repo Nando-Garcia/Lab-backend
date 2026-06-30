@@ -16,3 +16,8 @@ output "lambda_role_id" {
   description = "ID of Lambda execution role"
   value       = aws_iam_role.lambda_role.id
 }
+
+output "lambda_function_arn" {
+  description = "ARN of deployed Lambda function (sqs consumer)"
+  value       = aws_lambda_function.sqs_consumer.arn
+}

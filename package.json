@@ -12,6 +12,7 @@
     "start:dev": "nest start --watch",
     "start:debug": "nest start --debug --watch",
     "start:prod": "node dist/main",
+    "build:lambda": "tsc -p tsconfig.lambda.json && mkdir -p lambda-dist && zip -j lambda-dist/sqs-consumer.zip dist/lambda/*",
     "lint": "eslint \"{src,apps,libs,test}/**/*.ts\" --fix",
     "test": "jest",
     "test:watch": "jest --watch",

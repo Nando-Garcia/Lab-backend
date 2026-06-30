@@ -38,7 +38,7 @@ export class NotesService {
       });
 
       return notes;
-    } catch (error) {
+    } catch (error: any) {
       this.logger.error(`[NOTES_FIND_FAILED] userId=${userId}`, {
         context: 'NotesService.findAllByUser',
         userId,
@@ -69,7 +69,7 @@ export class NotesService {
       void this.sqsProducer.sendNoteCreatedEvent(savedNote.id, userId);
 
       return savedNote;
-    } catch (error) {
+    } catch (error: any) {
       this.logger.error(`[NOTE_CREATE_FAILED] userId=${userId}`, {
         context: 'NotesService.create',
         userId,

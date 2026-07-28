@@ -198,6 +198,30 @@ npm run test:e2e
 npm run test:cov
 ```
 
+## Roadmap / Future Improvements
+
+### API Gateway
+
+Replace direct NestJS exposure with API Gateway as the single entry point for all HTTP traffic.
+
+- **Rate limiting and throttling** per endpoint without application-level code
+- **Request/response transformation** — validate and shape payloads before they reach NestJS
+- **Centralized auth** via Lambda authorizers, decoupling authentication from the application
+- **Usage plans** to support different consumer tiers (internal, external, partner)
+- Standard pattern in production AWS architectures where NestJS runs behind a private VPC and API Gateway is the only public surface
+
+### EventBridge
+
+Replace direct SQS publishing with EventBridge as the central event bus.
+
+- **Decouples producers from consumers** — NestJS emits an event to the bus; EventBridge routes it to SQS, Lambda, or any other target by rule, without changing producer code
+- **Multiple consumers per event** — e.g. `FILE_ATTACHED` could trigger both a Lambda for processing and an SNS topic for notifications, from a single published event
+- **Native schema registry** — enforces event contracts and enables auto-generated documentation
+- **Easier extensibility** — adding a new event type (e.g. `NOTE_DELETED`, `USER_REGISTERED`) only requires a new rule, not changes to the producer or existing consumers
+- Current SQS-direct approach works well for a single consumer; EventBridge becomes the right choice when the event fan-out grows
+
+---
+
 ## License
 
 MIT

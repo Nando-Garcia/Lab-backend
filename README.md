@@ -20,7 +20,13 @@ HTTP Request
      ▼
 NestJS API ──── TypeORM ──── PostgreSQL
      │
-     │  (on NOTE_CREATED)
+     │  POST /notes/:id/attachments
+     │  (only when file is attached)
+     ▼
+NestJS: Upload file ──► S3 Bucket (notes-attachments)
+     │               Save fileUrl in DB
+     │
+     │  Fire & forget
      ▼
 SQS Producer ──► notes-queue (SQS)
                       │
@@ -30,10 +36,13 @@ SQS Producer ──► notes-queue (SQS)
                (notes-sqs-consumer)
                       │
                       ▼
-               Process event / log
+               Process FILE_ATTACHED event
+               (async post-processing simulation)
 ```
 
-**Flow:** When a note is created via the REST API, NestJS publishes a `NOTE_CREATED` event to SQS. AWS Lambda is triggered automatically via Event Source Mapping and processes the message asynchronously.
+**Flow:** When a user attaches a file to a note, NestJS uploads it to S3, saves the file URL in the database, and publishes a `FILE_ATTACHED` event to SQS. AWS Lambda is triggered automatically via Event Source Mapping and processes the event asynchronously (simulating thumbnail generation, virus scanning, indexing, etc.).
+
+Notes without attachments are saved directly to PostgreSQL — Lambda is only triggered when there is real async work to do.
 
 ## Project Structure
 
@@ -49,7 +58,7 @@ src/
 │   ├── notes.controller.ts
 │   └── notes.module.ts
 ├── service/
-│   └── notes.service.ts
+│   └── notes.service.ts    # Includes S3 upload + SQS publish
 ├── sqs/                # SQS producer
 │   ├── sqs-producer.service.ts
 │   └── sqs.module.ts
@@ -58,14 +67,15 @@ src/
 │   ├── sqs-consumer.handler.ts
 │   └── lambda-sqs-consumer.service.ts
 └── entitys/
-    ├── note.entity.ts
+    ├── note.entity.ts      # includes fileUrl column
     └── user.entity.ts
 
 infra/                  # Terraform IaC
 ├── main.tf             # LocalStack provider
 ├── variables.tf
-├── iam.tf              # IAM role + policies
+├── iam.tf              # IAM role + policies (CloudWatch, SQS, S3)
 ├── sqs.tf              # SQS queue + DLQ
+├── s3.tf               # S3 bucket for attachments
 ├── lambda.tf           # Lambda function + event source mapping
 └── outputs.tf
 ```
@@ -136,15 +146,29 @@ docker exec localstack-lab awslocal lambda update-function-code \
 | POST | `/auth/register` | No | Register user |
 | POST | `/auth/login` | No | Login, returns JWT |
 | GET | `/notes` | JWT | Get user notes |
-| POST | `/notes` | JWT | Create note (triggers SQS event) |
+| POST | `/notes` | JWT | Create note (direct to DB, no SQS) |
+| POST | `/notes/:id/attachments` | JWT | Upload file to S3, save URL in DB, publish FILE_ATTACHED to SQS |
 | DELETE | `/notes/:id` | JWT | Delete note |
 
 ## Environment Variables
 
 ```env
-USE_CLOUDWATCH=false        # Enable winston-cloudwatch logging
+# AWS
+AWS_ACCESS_KEY_ID=test
+AWS_SECRET_ACCESS_KEY=test
 AWS_REGION=us-east-1
-AWS_ENDPOINT=http://localhost:4566
+LOCALSTACK_ENDPOINT=http://localhost:4566
+
+# Secrets Manager
+DB_CREDENTIALS_SECRET_ID=notesdb/credentials
+SQS_CONFIG_SECRET_ID=sqs/config
+
+# S3
+S3_BUCKET=notes-attachments
+
+# CloudWatch (optional)
+USE_CLOUDWATCH=false
+CLOUDWATCH_LOG_GROUP=/app/backend
 ```
 
 ## Infrastructure (Terraform)
@@ -152,10 +176,12 @@ AWS_ENDPOINT=http://localhost:4566
 Resources managed by Terraform:
 
 | Resource | Name |
-|----------|------|
+|---|---|
 | IAM Role | `notes-lambda-role` |
+| IAM Policy | CloudWatch Logs, SQS consume, S3 read/write |
 | SQS Queue | `notes-queue` |
 | SQS DLQ | `notes-dlq` |
+| S3 Bucket | `notes-attachments` |
 | Lambda Function | `notes-sqs-consumer` |
 | Event Source Mapping | `notes-queue → notes-sqs-consumer` |
 

@@ -12,6 +12,9 @@ export class Note {
   @Column()
   content: string;
 
+  @Column({ nullable: true })
+  fileUrl?: string;
+
   @ManyToOne(() => User, (user) => user.notes, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'userId' })
   user: User;

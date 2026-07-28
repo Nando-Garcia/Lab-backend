@@ -8,7 +8,6 @@ export class LambdaSqsConsumerService {
         await this.processMessage(body, record.messageId || record.MessageId);
       } catch (err) {
         console.error('Error parsing record body', err);
-        // If we throw here, Lambda/SQS will re-try according to configuration
         throw err;
       }
     }
@@ -17,14 +16,19 @@ export class LambdaSqsConsumerService {
   async processMessage(body: any, messageId?: string) {
     console.log('[LAMBDA_PROCESS_MESSAGE] start', { messageId, body });
 
-    // Example processing logic depending on event type
-    if (body.event === 'NOTE_CREATED') {
-      // TODO: implement indexing / async processing
-      console.log('[LAMBDA] NOTE_CREATED processing for noteId=', body.noteId);
-      // In a real setup you could call an internal API or initialize a lightweight DB client
-    } else if (body.event === 'FILE_ATTACHED') {
-      console.log('[LAMBDA] FILE_ATTACHED processing for noteId=', body.noteId, 'fileUrl=', body.fileUrl);
-      // TODO: validate S3 object, generate thumbnails, update metadata in DB
+    if (body.event === 'FILE_ATTACHED') {
+      console.log('[LAMBDA] FILE_ATTACHED received', {
+        noteId: body.noteId,
+        userId: body.userId,
+        fileUrl: body.fileUrl,
+        timestamp: body.timestamp,
+      });
+
+      // Async post-processing simulation:
+      // In production this could trigger thumbnail generation,
+      // virus scanning, metadata indexing, or push notifications.
+      console.log('[LAMBDA] Simulating async post-processing for file:', body.fileUrl);
+      console.log('[LAMBDA] FILE_ATTACHED processing complete for noteId=', body.noteId);
     } else {
       console.log('[LAMBDA] Unknown event type', body.event);
     }

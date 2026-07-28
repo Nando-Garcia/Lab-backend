@@ -76,22 +76,21 @@ resource "aws_iam_role_policy" "lambda_sqs_policy" {
 # S3 Policy (Placeholder para feature/s3-attachments)
 ################################################################################
 
-# TODO: Agregar en feature/s3-attachments
-# resource "aws_iam_role_policy" "lambda_s3_policy" {
-#   name = "${var.project_name}-lambda-s3-policy"
-#   role = aws_iam_role.lambda_role.id
-#
-#   policy = jsonencode({
-#     Version = "2012-10-17"
-#     Statement = [{
-#       Sid    = "S3Policy"
-#       Effect = "Allow"
-#       Action = [
-#         "s3:GetObject",
-#         "s3:PutObject",
-#         "s3:DeleteObject"
-#       ]
-#       Resource = "arn:aws:s3:::*/*"
-#     }]
-#   })
-# }
+resource "aws_iam_role_policy" "lambda_s3_policy" {
+  name = "${var.project_name}-lambda-s3-policy"
+  role = aws_iam_role.lambda_role.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Sid    = "S3Policy"
+      Effect = "Allow"
+      Action = [
+        "s3:GetObject",
+        "s3:PutObject",
+        "s3:DeleteObject"
+      ]
+      Resource = "${aws_s3_bucket.notes_attachments.arn}/*"
+    }]
+  })
+}

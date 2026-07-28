@@ -28,17 +28,18 @@ export class SqsProducerService {
     });
   }
 
-  async sendNoteCreatedEvent(noteId: number, userId: number): Promise<void> {
+  async sendFileAttachedEvent(noteId: number, userId: number, fileUrl: string): Promise<void> {
     try {
       const message = {
-        event: 'NOTE_CREATED',
+        event: 'FILE_ATTACHED',
         noteId,
         userId,
+        fileUrl,
         timestamp: new Date().toISOString(),
       };
 
       this.logger.log(`[SQS_MESSAGE_SEND_START] noteId=${noteId}, userId=${userId}`, {
-        context: 'SqsProducerService.sendNoteCreatedEvent',
+        context: 'SqsProducerService.sendFileAttachedEvent',
         noteId,
         userId,
         event: message.event,
@@ -54,10 +55,11 @@ export class SqsProducerService {
       this.logger.log(
         `[SQS_MESSAGE_SENT] Mensaje enviado correctamente`,
         {
-          context: 'SqsProducerService.sendNoteCreatedEvent',
+          context: 'SqsProducerService.sendFileAttachedEvent',
           messageId: result.MessageId,
           noteId,
           userId,
+          fileUrl,
           timestamp: message.timestamp,
         },
       );
@@ -65,7 +67,7 @@ export class SqsProducerService {
       this.logger.error(
         `[SQS_MESSAGE_SEND_FAILED] Error enviando mensaje a SQS`,
         {
-          context: 'SqsProducerService.sendNoteCreatedEvent',
+          context: 'SqsProducerService.sendFileAttachedEvent',
           noteId,
           userId,
           error: error.message,

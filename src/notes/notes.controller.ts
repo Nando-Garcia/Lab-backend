@@ -1,4 +1,9 @@
-import { Controller, Get, Post, Body, UseGuards, Request } from '@nestjs/common';
+import {
+  Controller, Get, Post, Body, UseGuards, Request,
+  Param, ParseIntPipe, UseInterceptors, UploadedFile,
+} from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { memoryStorage } from 'multer';
 import { NotesService } from '../service/notes.service';
 import { Note } from '../entitys/note.entity';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
@@ -19,6 +24,16 @@ export class NotesController {
     @Request() req: any,
   ): Promise<Note> {
     return this.notesService.create(note, req.user.userId);
+  }
+
+  @Post(':id/attachments')
+  @UseInterceptors(FileInterceptor('file', { storage: memoryStorage() }))
+  attachFile(
+    @Param('id', ParseIntPipe) id: number,
+    @UploadedFile() file: Express.Multer.File,
+    @Request() req: any,
+  ): Promise<Note> {
+    return this.notesService.attachFile(id, req.user.userId, file);
   }
 }
 

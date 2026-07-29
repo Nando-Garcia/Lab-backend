@@ -5,7 +5,7 @@ import {
 import { FileInterceptor } from '@nestjs/platform-express';
 import { memoryStorage } from 'multer';
 import { NotesService } from '../service/notes.service';
-import { Note } from '../entitys/note.entity';
+import { Note } from '../entities/note.entity';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { CreateNoteDto } from './dto/create-note.dto';
 

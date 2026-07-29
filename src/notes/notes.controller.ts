@@ -7,6 +7,7 @@ import { memoryStorage } from 'multer';
 import { NotesService } from '../service/notes.service';
 import { Note } from '../entitys/note.entity';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { CreateNoteDto } from './dto/create-note.dto';
 
 @Controller('notes')
 @UseGuards(JwtAuthGuard)
@@ -20,7 +21,7 @@ export class NotesController {
 
   @Post()
   createNote(
-    @Body() note: { title: string; content: string },
+    @Body() note: CreateNoteDto,
     @Request() req: any,
   ): Promise<Note> {
     return this.notesService.create(note, req.user.userId);

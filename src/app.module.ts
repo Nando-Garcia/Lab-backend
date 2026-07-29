@@ -1,5 +1,7 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
+import { APP_GUARD } from '@nestjs/core';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { NotesModule } from './notes/notes.module';
@@ -12,6 +14,13 @@ import {
 
 @Module({
   imports: [
+    ThrottlerModule.forRoot([
+      {
+        name: 'default',
+        ttl: 60000,   // window: 1 minute
+        limit: 60,    // max 60 requests per minute (general)
+      },
+    ]),
     TypeOrmModule.forRootAsync({
       useFactory: async () => {
         const client = new SecretsManagerClient({
@@ -46,6 +55,12 @@ import {
     SqsModule,
   ],
   controllers: [AppController],
-  providers: [AppService],
+  providers: [
+    AppService,
+    {
+      provide: APP_GUARD,
+      useClass: ThrottlerGuard,   // applies rate limiting globally
+    },
+  ],
 })
 export class AppModule {}

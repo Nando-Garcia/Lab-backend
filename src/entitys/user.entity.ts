@@ -12,6 +12,9 @@ export class User {
   @Column()
   password: string;
 
+  @Column({ nullable: true, type: 'text' })
+  refreshToken: string | null;
+
   @OneToMany(() => Note, (note) => note.user)
   notes: Note[];
 }

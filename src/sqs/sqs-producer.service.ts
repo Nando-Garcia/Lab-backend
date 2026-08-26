@@ -1,8 +1,9 @@
-import { Injectable, Inject, Logger } from '@nestjs/common';
+import { Injectable, Inject } from '@nestjs/common';
 import {
   SQSClient,
   SendMessageCommand,
 } from '@aws-sdk/client-sqs';
+import { createLogger } from '../common/logger';
 
 interface SqsConfig {
   queueUrl: string;
@@ -13,7 +14,7 @@ interface SqsConfig {
 @Injectable()
 export class SqsProducerService {
   private readonly client: SQSClient;
-  private readonly logger = new Logger(SqsProducerService.name);
+  private readonly logger = createLogger(SqsProducerService.name);
 
   constructor(@Inject('SQS_CONFIG') private readonly sqsConfig: SqsConfig) {
     this.client = new SQSClient({
@@ -38,7 +39,7 @@ export class SqsProducerService {
         timestamp: new Date().toISOString(),
       };
 
-      this.logger.log(`[SQS_MESSAGE_SEND_START] noteId=${noteId}, userId=${userId}`, {
+      this.logger.info(`[SQS_MESSAGE_SEND_START] noteId=${noteId}, userId=${userId}`, {
         context: 'SqsProducerService.sendFileAttachedEvent',
         noteId,
         userId,
@@ -52,7 +53,7 @@ export class SqsProducerService {
 
       const result = await this.client.send(command);
 
-      this.logger.log(
+      this.logger.info(
         `[SQS_MESSAGE_SENT] Mensaje enviado correctamente`,
         {
           context: 'SqsProducerService.sendFileAttachedEvent',

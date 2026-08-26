@@ -1,14 +1,15 @@
-import { Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Note } from '../entities/note.entity';
 import { SqsProducerService } from '../sqs/sqs-producer.service';
-import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
+import { S3Client, PutObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3';
 import { randomUUID } from 'crypto';
+import { createLogger } from '../common/logger';
 
 @Injectable()
 export class NotesService {
-  private readonly logger = new Logger(NotesService.name);
+  private readonly logger = createLogger(NotesService.name);
   private readonly s3Client: S3Client;
   private readonly bucketName: string;
 
@@ -101,7 +102,7 @@ export class NotesService {
     const ext = file.originalname.split('.').pop();
     const key = `${userId}/${noteId}/${randomUUID()}.${ext}`;
 
-    this.logger.log(`[S3_UPLOAD_START] noteId=${noteId}, key=${key}`);
+    this.logger.info(`[S3_UPLOAD_START] noteId=${noteId}, key=${key}`);
 
     await this.s3Client.send(new PutObjectCommand({
       Bucket: this.bucketName,
@@ -111,13 +112,14 @@ export class NotesService {
     }));
 
     const fileUrl = `${process.env.LOCALSTACK_ENDPOINT}/${this.bucketName}/${key}`;
-    this.logger.log(`[S3_UPLOAD_SUCCESS] noteId=${noteId}, fileUrl=${fileUrl}`);
+    this.logger.info(`[S3_UPLOAD_SUCCESS] noteId=${noteId}, fileUrl=${fileUrl}`);
 
     note.fileUrl = fileUrl;
     const updated = await this.notesRepository.save(note);
 
     // Fire & forget: Lambda procesa el evento de forma asíncrona
-    void this.sqsProducer.sendFileAttachedEvent(noteId, userId, fileUrl);
+    this.sqsProducer.sendFileAttachedEvent(noteId, userId, fileUrl)
+      .catch(err => this.logger.error('[SQS_SEND_FAILED] noteId=' + noteId, err));
 
     return updated;
   }

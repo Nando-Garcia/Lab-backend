@@ -32,7 +32,7 @@ export class NotesService {
 
   async findAllByUser(userId: number): Promise<Note[] | { mensaje: string }> {
     try {
-      this.logger.log(`[NOTES_FIND_START] userId=${userId}`, {
+      this.logger.info(`[NOTES_FIND_START] userId=${userId}`, {
         context: 'NotesService.findAllByUser',
         userId,
       });
@@ -47,7 +47,7 @@ export class NotesService {
         return { mensaje: 'no hay mensajes' };
       }
 
-      this.logger.log(`[NOTES_FIND_SUCCESS] userId=${userId}, count=${notes.length}`, {
+      this.logger.info(`[NOTES_FIND_SUCCESS] userId=${userId}, count=${notes.length}`, {
         context: 'NotesService.findAllByUser',
         userId,
         count: notes.length,
@@ -66,7 +66,7 @@ export class NotesService {
 
   async create(note: { title: string; content: string }, userId: number): Promise<Note> {
     try {
-      this.logger.log(`[NOTE_CREATE_START] userId=${userId}, titleLength=${note.title.length}`, {
+      this.logger.info(`[NOTE_CREATE_START] userId=${userId}, titleLength=${note.title.length}`, {
         context: 'NotesService.create',
         userId,
         titleLength: note.title.length,
@@ -75,7 +75,7 @@ export class NotesService {
       const newNote = this.notesRepository.create({ ...note, userId });
       const savedNote = await this.notesRepository.save(newNote);
 
-      this.logger.log(`[NOTE_CREATE_SUCCESS] noteId=${savedNote.id}, userId=${userId}`, {
+      this.logger.info(`[NOTE_CREATE_SUCCESS] noteId=${savedNote.id}, userId=${userId}`, {
         context: 'NotesService.create',
         userId,
         noteId: savedNote.id,
@@ -122,5 +122,55 @@ export class NotesService {
       .catch(err => this.logger.error('[SQS_SEND_FAILED] noteId=' + noteId, err));
 
     return updated;
+  }
+
+  async delete(noteId: number, userId: number): Promise<{ message: string }> {
+    try {
+      this.logger.info(`[NOTE_DELETE_START] noteId=${noteId}, userId=${userId}`);
+
+      const note = await this.notesRepository.findOne({ where: { id: noteId, userId } });
+      if (!note) {
+        throw new NotFoundException(`Note ${noteId} not found for user ${userId}`);
+      }
+
+      // Si existe archivo adjunto, intentar borrarlo de S3
+      if (note.fileUrl) {
+        try {
+          // Extraer la key del S3 desde la URL
+          // URL formato: http://localhost:4566/notes-attachments/userId/noteId/uuid.ext
+          const urlParts = note.fileUrl.split('/');
+          const key = `${urlParts[urlParts.length - 3]}/${urlParts[urlParts.length - 2]}/${urlParts[urlParts.length - 1]}`;
+
+          this.logger.info(`[S3_DELETE_START] noteId=${noteId}, key=${key}`);
+          
+          await this.s3Client.send(new DeleteObjectCommand({
+            Bucket: this.bucketName,
+            Key: key,
+          }));
+
+          this.logger.info(`[S3_DELETE_SUCCESS] noteId=${noteId}, key=${key}`);
+        } catch (s3Error: any) {
+          // Loguear pero continuar — el archivo S3 queda huérfano, pero la nota se borra de BD
+          this.logger.warn(`[S3_DELETE_FAILED] noteId=${noteId}, fileUrl=${note.fileUrl}`, {
+            context: 'NotesService.delete',
+            error: s3Error.message,
+          });
+        }
+      }
+
+      // Eliminar nota de BD
+      await this.notesRepository.remove(note);
+
+      this.logger.info(`[NOTE_DELETE_SUCCESS] noteId=${noteId}, userId=${userId}`);
+
+      return { message: 'Nota eliminada correctamente' };
+    } catch (error: any) {
+      this.logger.error(`[NOTE_DELETE_FAILED] noteId=${noteId}, userId=${userId}`, {
+        context: 'NotesService.delete',
+        error: error.message,
+        stack: error.stack,
+      });
+      throw error;
+    }
   }
 }

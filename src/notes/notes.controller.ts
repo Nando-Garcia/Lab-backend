@@ -1,5 +1,5 @@
 import {
-  Controller, Get, Post, Body, UseGuards, Request,
+  Controller, Get, Post, Body, UseGuards, Request, Delete,
   Param, ParseIntPipe, UseInterceptors, UploadedFile,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
@@ -36,6 +36,14 @@ export class NotesController {
     @Request() req: AuthenticatedRequest,
   ): Promise<Note> {
     return this.notesService.attachFile(id, req.user.userId, file);
+  }
+
+  @Delete(':id')
+  deleteNote(
+    @Param('id', ParseIntPipe) id: number,
+    @Request() req: AuthenticatedRequest,
+  ): Promise<{ message: string }> {
+    return this.notesService.delete(id, req.user.userId);
   }
 }
 
